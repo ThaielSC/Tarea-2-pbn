@@ -1,0 +1,43 @@
+# === Archivos binarios y ejecutables ===
+*.out
+*.exe
+*.o
+*.obj
+*.a
+*.so
+*.dll
+*.lib
+
+# === Ignorar ejecutables sin extensión generados por make (Linux) ===
+# En la raíz o en cualquier subcarpeta como /bin
+*/main
+main
+
+# === Carpetas típicas de compilación ===
+/bin/
+/build/
+/dist/
+/debug/
+/release/
+
+# === Archivos de resultados o pruebas ===
+*.txt
+test-output.txt
+resultados.txt
+lista_canciones.txt
+
+# === Archivos grandes de datos (por ejemplo, bases de datos csv) ===
+*.csv
+
+# === Archivos temporales del sistema o editores ===
+.DS_Store
+*.swp
+*~
+*.bak
+
+# === Archivos de configuración de IDEs ===
+.vscode/
+.idea/
+
+# === Archivos generados por make ===
+Makefile~
