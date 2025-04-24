@@ -16,9 +16,9 @@ $(TARGET): $(SRC)
 	@mkdir -p bin
 	$(CC) $(CFLAGS) $(SRC) -o $(TARGET)
 
-# Ejecutar el binario
+# Ejecutar el binario, pasando los argumentos que se le den a 'make run'
 run: $(TARGET)
-	clear && ./$(TARGET)
+	clear && ./$(TARGET) $(filter-out $@,$(MAKECMDGOALS))
 
 # Limpiar
 clean:
