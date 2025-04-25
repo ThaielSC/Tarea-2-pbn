@@ -8,6 +8,9 @@ SRC = main.c
 CC = gcc
 CFLAGS = -Wall -Wextra -Wundef -Werror -Wuninitialized -Winit-self
 
+# Declarar targets "falsos"
+.PHONY: all run clean
+
 # Regla principal
 all: $(TARGET)
 
@@ -23,3 +26,7 @@ run: $(TARGET)
 # Limpiar
 clean:
 	rm -f $(TARGET)
+
+# Ignorar otros objetivos (como parámetros pasados)
+%:
+	@:
