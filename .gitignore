@@ -8,10 +8,10 @@
 *.dll
 *.lib
 
-# === Ignorar ejecutables sin extensión generados por make (Linux) ===
-# En la raíz o en cualquier subcarpeta como /bin
-*/main
-main
+# === Ignorar ejecutables sin extensión ===
+*
+!*.*
+!Makefile
 
 # === Carpetas típicas de compilación ===
 /bin/
