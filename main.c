@@ -42,12 +42,27 @@ typedef struct
   char *collaboration;
 } song;
 
-typedef struct
+/* pool generico de strings */
+typedef struct // TODO: Añadir fechas al pool
 {
-  song *songs;
-  int size;
+  char **strings;
+  int filled;
   int capacity;
-} SongList;
+} StringPool;
+
+/* se utiliza para hacer un pool con de los elementos que se pueden repetir y
+ * así evitar crear copias de esto utilizando punteros a ellos desde song*/
+typedef struct // Como almacena valores unicos puede ser util para crear filtros
+{
+  StringPool artist_pool;
+  StringPool album_pool;
+  StringPool genre_pool;
+  StringPool label_pool;
+  StringPool language_pool;
+  StringPool composer_pool;
+  StringPool producer_pool;
+  StringPool collaboration_pool;
+} songPool;
 
 /* ===UTILITARIOS=== */
 void show_usage_error(const char *__name__)
@@ -127,16 +142,97 @@ char **split(const char *linea_original, int *count, char separator)
   return result;
 }
 
-/* ===Cargar Canciones=== */
-void set_basic_info(song *s, char **data)
+/* ===Funciones para String Interning=== */
+void init_string_pool(StringPool *pool)
+{
+  pool->capacity = 10;
+  pool->filled = 0;
+  pool->strings = malloc(sizeof(char *) * pool->capacity);
+  if (!pool->strings)
+  {
+    fprintf(stderr, "Error: No se pudo inicializar el string pool\n");
+    exit(EXIT_FAILURE);
+  }
+}
+
+void free_string_pool(StringPool *pool)
+{
+  for (int i = 0; i < pool->filled; i++)
+  {
+    free(pool->strings[i]);
+  }
+  free(pool->strings);
+  pool->strings = NULL;
+  pool->filled = 0;
+  pool->capacity = 0;
+}
+
+void init_song_pool(songPool *pool)
+{
+  init_string_pool(&pool->artist_pool);
+  init_string_pool(&pool->album_pool);
+  init_string_pool(&pool->genre_pool);
+  init_string_pool(&pool->label_pool);
+  init_string_pool(&pool->language_pool);
+  init_string_pool(&pool->composer_pool);
+  init_string_pool(&pool->producer_pool);
+  init_string_pool(&pool->collaboration_pool);
+}
+
+void free_song_pool(songPool *pool)
+{
+  free_string_pool(&pool->artist_pool);
+  free_string_pool(&pool->album_pool);
+  free_string_pool(&pool->genre_pool);
+  free_string_pool(&pool->label_pool);
+  free_string_pool(&pool->language_pool);
+  free_string_pool(&pool->composer_pool);
+  free_string_pool(&pool->producer_pool);
+  free_string_pool(&pool->collaboration_pool);
+}
+
+char *intern_string(StringPool *pool, const char *str)
+{
+  if (!str || !*str)
+    return NULL;
+
+  for (int i = 0; i < pool->filled; i++)
+    if (strcmp(pool->strings[i], str) == 0)
+      return pool->strings[i];
+
+  // No existe, verificar capacidad
+  if (pool->filled >= pool->capacity)
+  {
+    pool->capacity *= 2;
+    pool->strings = realloc(pool->strings, sizeof(char *) * pool->capacity);
+    if (!pool->strings)
+    {
+      fprintf(stderr, "Error: Fallo al redimensionar el string pool\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  pool->strings[pool->filled] = strdup(str);
+  if (!pool->strings[pool->filled])
+  {
+    fprintf(stderr, "Error: Fallo al duplicar el string\n");
+    exit(EXIT_FAILURE);
+  }
+
+  return pool->strings[pool->filled++];
+}
+
+/* ===Cargar Canciones usando String Interning=== */
+void set_basic_info(song *s, char **data, songPool *pool)
 {
   strncpy(s->id, data[SONG_ID], 7);
   s->id[7] = '\0';
 
-  s->title = data[SONG_TITLE];
-  s->artist = data[ARTIST];
-  s->album = data[ALBUM];
-  s->genre = data[GENRE];
+  s->title =
+      strdup(data[SONG_TITLE]); // El título siempre es único, no se interna
+  s->artist = intern_string(&pool->artist_pool, data[ARTIST]);
+  s->album = intern_string(&pool->album_pool, data[ALBUM]);
+  s->genre = intern_string(&pool->genre_pool, data[GENRE]);
 }
 
 void set_release_date(song *s, const char *field)
@@ -152,38 +248,40 @@ void set_metrics(song *s, char **data)
   s->stream = atoi(data[STREAM]);
 }
 
-void set_language(song *s, const char *field)
+void set_language(song *s, const char *field, songPool *pool)
 {
+  (void)pool;
   strncpy(s->language, field, 2);
   s->language[2] = '\0';
 }
 
-void set_misc(song *s, char **data)
+void set_misc(song *s, char **data, songPool *pool)
 {
   s->explicit_content =
       strcmp(data[EXPLICIT_CONTENT], "True") == 0 ? True : False;
-  s->label = data[LABEL];
-  s->composer = data[COMPOSER];
-  s->producer = data[PRODUCER];
-  s->collaboration = data[COLLABORATION];
+  s->label = intern_string(&pool->label_pool, data[LABEL]);
+  s->composer = intern_string(&pool->composer_pool, data[COMPOSER]);
+  s->producer = intern_string(&pool->producer_pool, data[PRODUCER]);
+  s->collaboration =
+      intern_string(&pool->collaboration_pool, data[COLLABORATION]);
 }
 
-song *build_song_from_fields(char **data)
+song *build_song_from_fields(char **data, songPool *pool)
 {
   song *s = malloc(sizeof(song));
   if (!s)
     return NULL;
 
-  set_basic_info(s, data);
+  set_basic_info(s, data, pool);
   set_release_date(s, data[RELEASE_DATE]);
   set_metrics(s, data);
-  set_language(s, data[LANGUAGE]);
-  set_misc(s, data);
+  set_language(s, data[LANGUAGE], pool);
+  set_misc(s, data, pool);
 
   return s;
 }
 
-song **load_songs_from(char *filename, int *total)
+song **load_songs_from(char *filename, int *total, songPool *pool)
 {
   FILE *archivo = fopen(filename, "r");
   if (!archivo)
@@ -217,7 +315,7 @@ song **load_songs_from(char *filename, int *total)
       songs = realloc(songs, sizeof(song *) * capacity);
     }
 
-    song *s = build_song_from_fields(fields);
+    song *s = build_song_from_fields(fields, pool);
     if (!s)
       continue;
 
@@ -235,22 +333,7 @@ void song_free(song *s)
   if (!s)
     return;
   free(s->title);
-  free(s->artist);
-  free(s->album);
-  free(s->genre);
-  free(s->label);
-  free(s->composer);
-  free(s->producer);
-  free(s->collaboration);
   free(s);
-}
-
-void SongList_free(SongList *list)
-{
-  for (int i = 0; i < list->size; i++)
-    song_free(list->songs);
-  free(list->songs);
-  free(list);
 }
 
 int main(int argc, char **argv)
@@ -258,17 +341,19 @@ int main(int argc, char **argv)
   if (argc == 1)
     show_usage_error(argv[0]);
 
+  songPool pool;
+  init_song_pool(&pool);
+
   int total_songs = 0;
-  song **songs = load_songs_from(argv[1], &total_songs);
+  song **songs = load_songs_from(argv[1], &total_songs, &pool);
 
   printf("Se cargaron %d canciones.\n", total_songs);
 
   for (int i = 0; i < total_songs; i++)
-  {
-    printf("Título: %s\n", songs[i]->title);
     song_free(songs[i]);
-  }
+
   free(songs);
+  free_song_pool(&pool);
 
   return 0;
 }
