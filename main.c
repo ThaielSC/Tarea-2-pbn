@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 /* ===DECLARACION DE INDICES=== */
 const int SONG_ID = 0, SONG_TITLE = 1, ARTIST = 2, ALBUM = 3, GENRE = 4,
@@ -8,29 +7,40 @@ const int SONG_ID = 0, SONG_TITLE = 1, ARTIST = 2, ALBUM = 3, GENRE = 4,
           LANGUAGE = 9, EXPLICIT_CONTENT = 10, LABEL = 11, COMPOSER = 12,
           PRODUCER = 13, COLLABORATION = 14;
 
-typedef struct song Song;
+/* ===DECLARACION DE TIPOS=== */
+typedef char ISO[3];
+typedef char ID[8];
+typedef char bool;
 
-struct song {
-  char *id;
+const bool True = 1;
+const bool False = 0;
+
+typedef struct {
+  int year;
+  char month;
+  char day;
+} Date;
+
+typedef struct {
+  ID id;
   char *title;
   char *artist;
   char *album;
   char *genre;
-  char *release_date;
-  int duration;
-  int popularity;
+  Date release_date;
+  float duration;
+  char popularity;
   int stream;
-  char *language;
-  char *explicit_content;
+  ISO language;
+  bool explicit_content;
   char *label;
   char *composer;
   char *producer;
   char *collaboration;
-  void (*show)(const Song *self);
-};
+} song;
 
-typedef struct SongList {
-  Song *songs;
+typedef struct {
+  song *songs;
   int size;
   int capacity;
 } SongList;
@@ -41,37 +51,19 @@ void show_usage_error(const char *__name__) {
   fprintf(stderr, "Usage: %s <filename.csv>\n", __name__);
   exit(EXIT_FAILURE);
 }
-void song_show(const Song *song) {
-  printf("\nInformacion de canción:\n");
-  printf("Title: %s; ", song->title);
-  printf("Artist: %s; ", song->artist);
-  printf("Album: %s; ", song->album);
-  printf("Genre: %s; ", song->genre);
-  printf("Release Date: %s; ", song->release_date);
-  printf("Duration: %d seconds; ", song->duration);
-  printf("Popularity: %d; ", song->popularity);
-  printf("Streams: %d; ", song->stream);
-  printf("Language: %s; ", song->language);
-  printf("Explicit Content: %s; ", song->explicit_content);
-  printf("Label: %s; ", song->label);
-  printf("Composer: %s; ", song->composer);
-  printf("Producer: %s; ", song->producer);
-  printf("Collaboration: %s\n", song->collaboration);
-}
 
-Song Song_create(char *id, char *title, char *artist, char *album, char *genre,
-                 char *release_date, int duration, int popularity, int stream,
-                 char *language, char *explicit_content, char *label,
-                 char *composer, char *producer, char *collaboration) {
-  Song s = {id,       title,        artist,           album,
-            genre,    release_date, duration,         popularity,
-            stream,   language,     explicit_content, label,
-            composer, producer,     collaboration,    song_show};
+/* song Song_create(char *id, char *title, char *artist, char *album, char
+*genre, char *release_date, int duration, int popularity, int stream, char
+*language, char *explicit_content, char *label, char *composer, char *producer,
+char *collaboration) { song s = { id,       title,        artist, album, genre,
+release_date, duration,         popularity, stream,   language,
+explicit_content, label, composer, producer,     collaboration,
+  };
 
   return s;
-}
+} */
 
-void SongList_free(SongList *list) {
+/* void SongList_free(SongList *list) {
   for (int i = 0; i < list->size; i++) {
     free(list->songs[i].id);
     free(list->songs[i].title);
@@ -89,25 +81,25 @@ void SongList_free(SongList *list) {
 
   free(list->songs);
   free(list);
-}
+} */
 /* ===Cargar Canciones=== */
 SongList *SongList_create(int capacity) {
   SongList *list = malloc(sizeof(SongList));
-  list->songs = malloc(sizeof(Song) * capacity);
+  list->songs = malloc(sizeof(song) * capacity);
   list->size = 0;
   list->capacity = capacity;
   return list;
 }
 
-void SongList_add(SongList *list, Song song) {
+void SongList_add(SongList *list, song song) {
   if (list->size == list->capacity) {
     list->capacity *= 2;
-    list->songs = realloc(list->songs, sizeof(Song) * list->capacity);
+    list->songs = realloc(list->songs, sizeof(song) * list->capacity);
   }
   list->songs[list->size++] = song;
 }
 
-void SongList_load_from_csv(SongList *list, const char *filename) {
+/* void SongList_load_from_csv(SongList *list, const char *filename) {
   FILE *f = fopen(filename, "r");
 
   char line[1000];
@@ -136,7 +128,6 @@ void SongList_load_from_csv(SongList *list, const char *filename) {
     char *producer = strtok(NULL, ",");
     char *collaboration = strtok(NULL, ",");
 
-    // ASIGNAR MEMORIA PARA LOS CHAR
     id = id ? strdup(id) : strdup("None");
     title = title ? strdup(title) : strdup("None");
     artist = artist ? strdup(artist) : strdup("None");
@@ -151,12 +142,11 @@ void SongList_load_from_csv(SongList *list, const char *filename) {
     producer = producer ? strdup(producer) : strdup("None");
     collaboration = collaboration ? strdup(collaboration) : strdup("None");
 
-    // CONVERTIR DATOS A NUMEROS
     int duration = duration_str ? atoi(duration_str) : 0;
     int popularity = popularity_str ? atoi(popularity_str) : 0;
     int stream = stream_str ? atoi(stream_str) : 0;
 
-    Song song =
+    song song =
         Song_create(id, title, artist, album, genre, release_date, duration,
                     popularity, stream, language, explicit_content, label,
                     composer, producer, collaboration);
@@ -165,31 +155,10 @@ void SongList_load_from_csv(SongList *list, const char *filename) {
   }
 
   fclose(f);
-}
+} */
 
 int main(int argc, char **argv) {
   if (argc == 1) show_usage_error(argv[0]);
-
-  printf("DataBase: %s\n", argv[1]);
-
-  Song mySong =
-      Song_create("1", "My New Song", "Some Artist", "Some Album", "Pop",
-                  "2025-04-23", 210, 75, 1000000, "EN", "No", "MyLabel",
-                  "Composer Name", "Producer Name", "Feat. Guest");
-
-  mySong.show(&mySong);
-
-  SongList *list = SongList_create(100);
-
-  SongList_load_from_csv(list, argv[1]);
-  printf("Canciones guardadas: %d\n", list->size);
-
-  // MOSTRAR CANCIONES
-  for (int i = 0; i < list->size; i++) {
-    list->songs[i].show(&list->songs[i]);
-  }
-
-  SongList_free(list);
 
   return 0;
 }
