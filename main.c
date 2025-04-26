@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* ===DECLARACION DE INDICES=== */
 const int SONG_ID = 0, SONG_TITLE = 1, ARTIST = 2, ALBUM = 3, GENRE = 4,
@@ -52,36 +53,62 @@ void show_usage_error(const char *__name__) {
   exit(EXIT_FAILURE);
 }
 
-/* song Song_create(char *id, char *title, char *artist, char *album, char
-*genre, char *release_date, int duration, int popularity, int stream, char
-*language, char *explicit_content, char *label, char *composer, char *producer,
-char *collaboration) { song s = { id,       title,        artist, album, genre,
-release_date, duration,         popularity, stream,   language,
-explicit_content, label, composer, producer,     collaboration,
-  };
+char *strdup(const char *s) {
+  size_t len = strlen(s) + 1;
+  char *copy = malloc(len);
+  if (copy) strcpy(copy, s);
+  return copy;
+}
 
-  return s;
-} */
+void remove_newline(char *linea) {
+  size_t len = strlen(linea);
+  if (len > 0 && linea[len - 1] == '\n') linea[len - 1] = '\0';
+}
 
-/* void SongList_free(SongList *list) {
-  for (int i = 0; i < list->size; i++) {
-    free(list->songs[i].id);
-    free(list->songs[i].title);
-    free(list->songs[i].artist);
-    free(list->songs[i].album);
-    free(list->songs[i].genre);
-    free(list->songs[i].release_date);
-    free(list->songs[i].language);
-    free(list->songs[i].explicit_content);
-    free(list->songs[i].label);
-    free(list->songs[i].composer);
-    free(list->songs[i].producer);
-    free(list->songs[i].collaboration);
+int count_delimiters(const char *linea, char separator) {
+  int count = 1;
+  for (const char *c = linea; *c; c++)
+    if (*c == separator) count++;
+  return count;
+}
+
+char *create_field(const char *start, const char *end) {
+  size_t len = end - start;
+  char *field = malloc(len + 1);
+  if (!field) return NULL;
+  strncpy(field, start, len);
+  field[len] = '\0';
+  return field;
+}
+
+char **split(const char *linea_original, int *count, char separator) {
+  char *linea = strdup(linea_original);
+  if (!linea) return NULL;
+
+  remove_newline(linea);
+  int n = count_delimiters(linea, separator);
+  int i = 0;
+
+  char **result = malloc(sizeof(char *) * n);
+  if (!result) {
+    free(linea);
+    return NULL;
   }
 
-  free(list->songs);
-  free(list);
-} */
+  const char *start = linea;
+  for (const char *ptr = linea;; ptr++) {
+    if (*ptr == separator || *ptr == '\0') {
+      result[i++] = (ptr == start) ? strdup("") : create_field(start, ptr);
+      if (*ptr == '\0') break;
+      start = ptr + 1;
+    }
+  }
+
+  *count = n;
+  free(linea);
+  return result;
+}
+
 /* ===Cargar Canciones=== */
 SongList *SongList_create(int capacity) {
   SongList *list = malloc(sizeof(SongList));
