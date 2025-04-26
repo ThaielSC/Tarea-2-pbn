@@ -110,82 +110,126 @@ char **split(const char *linea_original, int *count, char separator) {
 }
 
 /* ===Cargar Canciones=== */
-SongList *SongList_create(int capacity) {
-  SongList *list = malloc(sizeof(SongList));
-  list->songs = malloc(sizeof(song) * capacity);
-  list->size = 0;
-  list->capacity = capacity;
-  return list;
+void set_basic_info(song *s, char **data) {
+  strncpy(s->id, data[SONG_ID], 7);
+  s->id[7] = '\0';
+
+  s->title = data[SONG_TITLE];
+  s->artist = data[ARTIST];
+  s->album = data[ALBUM];
+  s->genre = data[GENRE];
 }
 
-void SongList_add(SongList *list, song song) {
-  if (list->size == list->capacity) {
-    list->capacity *= 2;
-    list->songs = realloc(list->songs, sizeof(song) * list->capacity);
+void set_release_date(song *s, const char *field) {
+  sscanf(field, "%d-%c-%c", &s->release_date.year, &s->release_date.month,
+         &s->release_date.day);
+}
+
+void set_metrics(song *s, char **data) {
+  s->duration = atof(data[DURATION]);
+  s->popularity = (char)atoi(data[POPULARITY]);
+  s->stream = atoi(data[STREAM]);
+}
+
+void set_language(song *s, const char *field) {
+  strncpy(s->language, field, 2);
+  s->language[2] = '\0';
+}
+
+void set_misc(song *s, char **data) {
+  s->explicit_content =
+      strcmp(data[EXPLICIT_CONTENT], "True") == 0 ? True : False;
+  s->label = data[LABEL];
+  s->composer = data[COMPOSER];
+  s->producer = data[PRODUCER];
+  s->collaboration = data[COLLABORATION];
+}
+
+song *build_song_from_fields(char **data) {
+  song *s = malloc(sizeof(song));
+  if (!s) return NULL;
+
+  set_basic_info(s, data);
+  set_release_date(s, data[RELEASE_DATE]);
+  set_metrics(s, data);
+  set_language(s, data[LANGUAGE]);
+  set_misc(s, data);
+
+  return s;
+}
+
+song **load_songs_from(char *filename, int *total) {
+  FILE *archivo = fopen(filename, "r");
+  if (!archivo) {
+    perror("Error al abrir archivo");
+    exit(EXIT_FAILURE);
   }
-  list->songs[list->size++] = song;
-}
 
-/* void SongList_load_from_csv(SongList *list, const char *filename) {
-  FILE *f = fopen(filename, "r");
+  int capacity = 10;
+  int count = 0;
+  song **songs = malloc(sizeof(song *) * capacity);
+  if (!songs) return NULL;
 
-  char line[1000];
-  int is_header = 1;
+  char linea[256];
+  fgets(linea, sizeof(linea), archivo);
 
-  while (fgets(line, sizeof(line), f)) {
-    // PARA NO LEER LA PRIMERA LÍNEA
-    if (is_header) {
-      is_header = 0;
+  while (fgets(linea, sizeof(linea), archivo)) {
+    int field_count = 15;
+    char **fields = split(linea, &field_count, ',');
+    if (field_count != 15) {
+      fprintf(stderr, "Error: línea con campos incompletos.\n");
       continue;
     }
 
-    char *id = strtok(line, ",");
-    char *title = strtok(NULL, ",");
-    char *artist = strtok(NULL, ",");
-    char *album = strtok(NULL, ",");
-    char *genre = strtok(NULL, ",");
-    char *release_date = strtok(NULL, ",");
-    char *duration_str = strtok(NULL, ",");
-    char *popularity_str = strtok(NULL, ",");
-    char *stream_str = strtok(NULL, ",");
-    char *language = strtok(NULL, ",");
-    char *explicit_content = strtok(NULL, ",");
-    char *label = strtok(NULL, ",");
-    char *composer = strtok(NULL, ",");
-    char *producer = strtok(NULL, ",");
-    char *collaboration = strtok(NULL, ",");
+    if (count >= capacity) {
+      capacity *= 2;
+      songs = realloc(songs, sizeof(song *) * capacity);
+    }
 
-    id = id ? strdup(id) : strdup("None");
-    title = title ? strdup(title) : strdup("None");
-    artist = artist ? strdup(artist) : strdup("None");
-    album = album ? strdup(album) : strdup("None");
-    genre = genre ? strdup(genre) : strdup("None");
-    release_date = release_date ? strdup(release_date) : strdup("None");
-    language = language ? strdup(language) : strdup("None");
-    explicit_content =
-        explicit_content ? strdup(explicit_content) : strdup("None");
-    label = label ? strdup(label) : strdup("None");
-    composer = composer ? strdup(composer) : strdup("None");
-    producer = producer ? strdup(producer) : strdup("None");
-    collaboration = collaboration ? strdup(collaboration) : strdup("None");
+    song *s = build_song_from_fields(fields);
+    if (!s) continue;
 
-    int duration = duration_str ? atoi(duration_str) : 0;
-    int popularity = popularity_str ? atoi(popularity_str) : 0;
-    int stream = stream_str ? atoi(stream_str) : 0;
-
-    song song =
-        Song_create(id, title, artist, album, genre, release_date, duration,
-                    popularity, stream, language, explicit_content, label,
-                    composer, producer, collaboration);
-
-    SongList_add(list, song);
+    songs[count++] = s;
+    free(fields);
   }
+  songs = realloc(songs, sizeof(song *) * count);
+  fclose(archivo);
+  *total = count;
+  return songs;
+}
 
-  fclose(f);
-} */
+void song_free(song *s) {
+  if (!s) return;
+  free(s->title);
+  free(s->artist);
+  free(s->album);
+  free(s->genre);
+  free(s->label);
+  free(s->composer);
+  free(s->producer);
+  free(s->collaboration);
+  free(s);
+}
+
+void SongList_free(SongList *list) {
+  for (int i = 0; i < list->size; i++) song_free(list->songs);
+  free(list->songs);
+  free(list);
+}
 
 int main(int argc, char **argv) {
   if (argc == 1) show_usage_error(argv[0]);
+
+  int total_songs = 0;
+  song **songs = load_songs_from(argv[1], &total_songs);
+
+  printf("Se cargaron %d canciones.\n", total_songs);
+
+  for (int i = 0; i < total_songs; i++) {
+    printf("Título: %s\n", songs[i]->title);
+    song_free(songs[i]);
+  }
+  free(songs);
 
   return 0;
 }
