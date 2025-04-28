@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 /* ===DECLARACION DE INDICES=== */
 const int SONG_ID = 0, SONG_TITLE = 1, ARTIST = 2, ALBUM = 3, GENRE = 4,
           RELEASE_DATE = 5, DURATION = 6, POPULARITY = 7, STREAM = 8,
@@ -336,46 +337,110 @@ void song_free(song *s)
   free(s);
 }
 
-void menu2(int n_canciones)
+//Para evitar error de llamada antes de declaración
+void menu(songPool pool, song **songs);
+
+
+
+void menu2(int n_canciones, song **filtered_songs, song **songs, songPool pool)
 {
   int ans;
-  printf("=== %d canciones encontradas ===\n"
+  printf("\n=== %d canciones encontradas ===\n"
          "1. Ver primeras 100 canciones \n"
          "2. Aplicar otro filtro\n"
          "3. Exportar y salir\n"
-         "Salir sin exportar\n",
+         "4. Salir sin exportar\n",
          n_canciones);
 
   scanf("%d", &ans);
   system("clear");
+  
+  if (ans==1)
+  {
+    printf("Se muestran las primeras 100 canciones:\n");
+
+    for (int i = 0; i < n_canciones && i<100; i++)
+    {
+      printf("%d. %s\n", i+1, filtered_songs[i]->title);
+    }
+  }
+
+  else if (ans == 2)
+  {
+    printf("Se aplica otro filtro\n");
+    menu(pool, songs);      //ESTO NO VA A FUNCIONAR PORQUE NO SE ENTREGA LA LISTA FILTRADA
+  }
+
+  else if (ans == 3)
+  {
+    printf("Se exporta y se sale\n");   // FALTA TERMINAR
+  }
+
+  else if (ans == 4)
+  {
+    printf("Se sale sin exportar\n");
+    exit(0);
+  }
+
+  else
+  {
+    printf("Opcion no valida\n");
+    menu2(n_canciones, filtered_songs, songs, pool);
+  }
 }
 
 int filtro_artista(songPool pool, song **songs)
 {
-  // char **ptr = pool.artist_pool.strings;
-  // int c = 1;
-  int size = pool.artist_pool.filled;
-  int n_canciones = (int)sizeof(songs);
-  printf("%d\n", n_canciones);
+  printf("Primeros 100 Artistas disponibles:\n");
 
-  (void)n_canciones;
-  for (int i = 0; i < size; i++)
+  // Se imprime el pool de artistas
+  for (int i = 0; i < pool.artist_pool.filled && i<100; i++)
   {
     if (pool.artist_pool.filled > 0)
     {
-      printf("%d. %s\n", i + 1, pool.artist_pool.strings[i]);
-      // printf("%d. %s\n", c, *ptr);
-      // c++;
-      // ptr++;
+      printf("%3d. %s\n", i + 1, pool.artist_pool.strings[i]);
     }
     else
     {
       printf("No hay artistas en el pool\n");
+      return 0;
     }
   }
-  menu2(n_canciones);
-  printf("\nSe filtra por artista\n");
-  return 3;
+
+  int size = pool.artist_pool.filled;
+
+  //Total canciones
+  int total_songs = 0;
+  while (songs[total_songs] != NULL)
+  {
+    total_songs++;
+  }
+  
+  printf("Ingrese el número del artista a filtrar: ");
+  int ans;
+  scanf("%d", &ans);
+  system("clear");
+  printf("Se filtra por artista: %s\n", pool.artist_pool.strings[ans - 1]);
+
+  //Canciones por artista seleccionado
+  int n_canciones = 0;
+
+  //Canciones filtradas
+  song **filtered_songs = malloc(sizeof(song *) * total_songs);
+
+  for (int i = 0; i < total_songs; i++)
+  {
+    if (strcmp(songs[i]->artist, pool.artist_pool.strings[ans - 1]) == 0)
+    {
+      filtered_songs[n_canciones] = songs[i];
+      n_canciones++;
+    }
+  }
+
+  menu2(n_canciones, filtered_songs, songs, pool);
+
+  free (filtered_songs);
+  return 0;
 }
 
 int filtro_album()
@@ -431,6 +496,9 @@ void menu(songPool pool, song **songs)
   filtros[ans - 1](pool, songs);
 }
 
+
+
+
 int main(int argc, char **argv)
 {
   if (argc == 1)
@@ -444,8 +512,6 @@ int main(int argc, char **argv)
 
   menu(pool, songs);
 
-  printf("Se cargaron %d canciones.\n", total_songs);
-
   for (int i = 0; i < total_songs; i++)
   {
     // printf("%s\n", songs[i]->artist);
@@ -454,8 +520,6 @@ int main(int argc, char **argv)
 
   free(songs);
   free_song_pool(&pool);
-  // system("clear");
-  //
 
   return 0;
 }
