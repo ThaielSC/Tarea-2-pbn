@@ -441,29 +441,30 @@ void menu2(int n_canciones, song **filtered_songs, song **songs, songPool pool)
   }
 }
 
-int filtro_artista(songPool pool, song **songs)
+// void string_filter(song **songs, char **rule) {}
+
+void show_first_100(char **list, char *type)
 {
-  printf("Primeros 100 Artistas disponibles:\n");
+  printf("Primeros 100 %s disponibles\n", type);
+  char **ptr = list;
 
-  // Se imprime el pool de artistas
-  for (int i = 0; i < pool.artist_pool.filled && i < 100; i++)
+  int i = 1;
+  while (*ptr && i <= 100)
   {
-    if (pool.artist_pool.filled > 0)
-    {
-      printf("%3d. %s\n", i + 1, pool.artist_pool.strings[i]);
-    }
-    else
-    {
-      printf("No hay artistas en el pool\n");
-      return 0;
-    }
+    printf(" %3d. %s\n", i, *ptr);
+    i++;
+    ptr++;
   }
+  if (!i)
+    printf("No hay %s disponibles", type);
+}
 
-  // int size = pool.artist_pool.filled;
+int filter_by_artist(songPool pool, song **songs)
+{
+  show_first_100(pool.artist_pool.strings, "Artistas");
 
-  // Total canciones
   int total_songs = 0;
-  while (songs[total_songs] != NULL)
+  while (songs[total_songs])
   {
     total_songs++;
   }
@@ -495,25 +496,10 @@ int filtro_artista(songPool pool, song **songs)
   return 0;
 }
 
-int filtro_album(songPool pool, song **songs)
+int filter_by_album(songPool pool, song **songs)
 {
-  printf("Primeros 100 albumes disponibles:\n");
+  show_first_100(pool.album_pool.strings, "Album");
 
-  // Se imprime el pool de albumes
-  for (int i = 0; i < pool.album_pool.filled && i < 100; i++)
-  {
-    if (pool.album_pool.filled > 0)
-    {
-      printf("%3d. %s\n", i + 1, pool.album_pool.strings[i]);
-    }
-    else
-    {
-      printf("No hay albumes en el pool\n");
-      return 0;
-    }
-  }
-
-  // Total canciones
   int total_songs = 0;
   while (songs[total_songs] != NULL)
   {
@@ -547,23 +533,9 @@ int filtro_album(songPool pool, song **songs)
   return 0;
 }
 
-int filtro_genero(songPool pool, song **songs)
+int filter_by_genre(songPool pool, song **songs)
 {
-  printf("Primeros 100 generos disponibles:\n");
-
-  // Se imprime el pool de albumes
-  for (int i = 0; i < pool.genre_pool.filled && i < 100; i++)
-  {
-    if (pool.genre_pool.filled > 0)
-    {
-      printf("%3d. %s\n", i + 1, pool.genre_pool.strings[i]);
-    }
-    else
-    {
-      printf("No hay generos en el pool\n");
-      return 0;
-    }
-  }
+  show_first_100(pool.genre_pool.strings, "genero");
 
   // Total canciones
   int total_songs = 0;
@@ -599,22 +571,9 @@ int filtro_genero(songPool pool, song **songs)
   return 0;
 }
 
-int filtro_idioma(songPool pool, song **songs)
+int filter_by_language(songPool pool, song **songs)
 {
-  printf("Primeros 100 idiomas disponibles:\n");
-
-  for (int i = 0; i < pool.language_pool.filled && i < 100; i++)
-  {
-    if (pool.language_pool.filled > 0)
-    {
-      printf("%3d. %s\n", i + 1, pool.language_pool.strings[i]);
-    }
-    else
-    {
-      printf("No hay lenguajes en el pool\n");
-      return 0;
-    }
-  }
+  show_first_100(pool.language_pool.strings, "idiomas");
 
   // Total canciones
   int total_songs = 0;
@@ -649,21 +608,21 @@ int filtro_idioma(songPool pool, song **songs)
   return 0;
 }
 
-int filtro_ano()
+int filter_by_year()
 {
   printf("Se filtra por año\n");
   return 0;
 }
 
-int filtro_duracion()
+int filter_by_duration()
 {
   printf("Se filtra por duracion\n");
   return 0;
 }
 
-int (*filtros[])(songPool, song **) = {filtro_artista, filtro_album,
-                                       filtro_genero,  filtro_idioma,
-                                       filtro_ano,     filtro_duracion};
+int (*filters[])(songPool, song **) = {filter_by_artist, filter_by_album,
+                                       filter_by_genre,  filter_by_language,
+                                       filter_by_year,   filter_by_duration};
 
 void menu(songPool pool, song **songs)
 {
@@ -681,7 +640,7 @@ void menu(songPool pool, song **songs)
 
   scanf("%d", &ans);
   system("clear");
-  filtros[ans - 1](pool, songs);
+  filters[ans - 1](pool, songs);
 }
 
 int main(int argc, char **argv)
