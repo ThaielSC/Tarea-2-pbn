@@ -42,17 +42,16 @@ typedef struct
   char *collaboration;
 } song;
 
-/* pool generico de strings */
-typedef struct // TODO: Añadir fechas al pool
+
+typedef struct
 {
   char **strings;
   int filled;
   int capacity;
 } StringPool;
 
-/* se utiliza para hacer un pool con de los elementos que se pueden repetir y
- * así evitar crear copias de esto utilizando punteros a ellos desde song*/
-typedef struct // Como almacena valores unicos puede ser util para crear filtros
+
+typedef struct
 {
   StringPool artist_pool;
   StringPool album_pool;
@@ -64,12 +63,32 @@ typedef struct // Como almacena valores unicos puede ser util para crear filtros
   StringPool collaboration_pool;
 } songPool;
 
+// Declaraciones de funciones para no tener problemas
+void show_first_100(char **list, char *type);
+int filter_by_artist(songPool pool, song **songs);
+int filter_by_album(songPool pool, song **songs);
+int filter_by_genre(songPool pool, song **songs);
+int filter_by_language(songPool pool, song **songs);
+int filter_by_year(songPool pool, song **songs);
+int filter_by_duration(songPool pool, song **songs);
+void menu(songPool pool, song **songs);
+void menu_lista_filtrada(songPool pool, song **filtered_songs, int n_canciones);
+void menu2(int n_canciones, song **filtered_songs, song **songs, songPool pool);
+
+int (*filters[])(songPool, song **) = {
+  filter_by_artist,
+  filter_by_album,
+  filter_by_genre,
+  filter_by_language,
+  filter_by_year,
+  filter_by_duration,
+};
+
 /* ===UTILITARIOS=== */
 void show_usage_error(const char *__name__)
 {
   fprintf(stderr, "Error: You must provide the CSV file as an argument.\n");
   fprintf(stderr, "Usage: %s <filename.csv>\n", __name__);
-  exit(EXIT_FAILURE);
 }
 
 char *strdup(const char *s)
@@ -210,7 +229,7 @@ char *intern_string(StringPool *pool, const char *str)
     if (!pool->strings)
     {
       fprintf(stderr, "Error: Fallo al redimensionar el string pool\n");
-      exit(EXIT_FAILURE);
+      return NULL;
     }
   }
 
@@ -225,7 +244,7 @@ char *intern_string(StringPool *pool, const char *str)
   if (!pool->strings[insert_pos])
   {
     fprintf(stderr, "Error: Fallo al duplicar el string\n");
-    exit(EXIT_FAILURE);
+    return NULL;
   }
 
   pool->filled++;
@@ -240,7 +259,7 @@ void init_string_pool(StringPool *pool)
   if (!pool->strings)
   {
     fprintf(stderr, "Error: No se pudo inicializar el string pool\n");
-    exit(EXIT_FAILURE);
+    return;
   }
 }
 
@@ -343,7 +362,7 @@ song **load_songs_from(char *filename, int *total, songPool *pool)
   if (!archivo)
   {
     perror("Error al abrir archivo");
-    exit(EXIT_FAILURE);
+    return NULL;
   }
 
   int capacity = 10;
@@ -392,57 +411,6 @@ void song_free(song *s)
   free(s);
 }
 
-// Para evitar error de llamada antes de declaración
-void menu(songPool pool, song **songs);
-
-void menu2(int n_canciones, song **filtered_songs, song **songs, songPool pool)
-{
-  int ans;
-  printf("\n=== %d canciones encontradas ===\n"
-         "1. Ver primeras 100 canciones \n"
-         "2. Aplicar otro filtro\n"
-         "3. Exportar y salir\n"
-         "4. Salir sin exportar\n",
-         n_canciones);
-
-  scanf("%d", &ans);
-  system("clear");
-
-  switch (ans)
-  {
-  case 1:
-    printf("Se muestran las primeras 100 canciones:\n");
-    for (int i = 0; i < n_canciones && i < 100; i++)
-    {
-      printf("%3d. %s\n", i + 1, filtered_songs[i]->title);
-    }
-    break;
-
-  case 2:
-    printf("Se aplica otro filtro\n");
-    menu(
-        pool,
-        songs); // ESTO NO VA A FUNCIONAR PORQUE NO SE ENTREGA LA LISTA FILTRADA
-    break;
-
-  case 3:
-    printf("Se exporta y se sale\n"); // FALTA TERMINAR
-    break;
-
-  case 4:
-    printf("Se sale sin exportar\n");
-    exit(0);
-    break;
-
-  default:
-    printf("Opcion no valida\n");
-    menu2(n_canciones, filtered_songs, songs, pool);
-    break;
-  }
-}
-
-// void string_filter(song **songs, char **rule) {}
-
 void show_first_100(char **list, char *type)
 {
   printf("Primeros 100 %s disponibles\n", type);
@@ -458,6 +426,11 @@ void show_first_100(char **list, char *type)
   if (!i)
     printf("No hay %s disponibles", type);
 }
+
+
+
+
+//================FILTROS================
 
 int filter_by_artist(songPool pool, song **songs)
 {
@@ -608,21 +581,137 @@ int filter_by_language(songPool pool, song **songs)
   return 0;
 }
 
-int filter_by_year()
+int filter_by_year(songPool pool, song **songs)
 {
-  printf("Se filtra por año\n");
+  printf("Año inicio: ");
+  int ans;
+  scanf("%d", &ans);
+  printf("Año final: ");
+  int ans2;
+  scanf("%d", &ans2);
+  system("clear");
+  printf("Se filtra entre año %d y %d\n", ans, ans2);
+
+
+  // Total canciones
+  int total_songs = 0;
+  while (songs[total_songs] != NULL)
+  {
+    total_songs++;
+  }
+
+  int n_canciones = 0;
+
+  song **filtered_songs = malloc(sizeof(song *) * total_songs);
+  for (int i = 0; i < total_songs; i++)
+  {
+    if (songs[i]->release_date.year >= ans && songs[i]->release_date.year <= ans2)
+    {
+      filtered_songs[n_canciones] = songs[i];
+      n_canciones++;
+    }
+  }
+
+  menu2(n_canciones, filtered_songs, songs, pool);
+  free(filtered_songs);
   return 0;
 }
 
-int filter_by_duration()
+int filter_by_duration(songPool pool, song **songs)
 {
-  printf("Se filtra por duracion\n");
+  printf("Duración mínima (s): ");
+  int ans;
+  scanf("%d", &ans);
+  printf("Duración máxima (s): ");
+  int ans2;
+  scanf("%d", &ans2);
+  system("clear");
+  printf("Se filtra entre duración %d(s) y %d(s)\n", ans, ans2);
+
+  // Total canciones
+  int total_songs = 0;
+  while (songs[total_songs] != NULL)
+  {
+    total_songs++;
+  }
+  int n_canciones = 0;
+  song **filtered_songs = malloc(sizeof(song *) * total_songs);
+  for (int i = 0; i < total_songs; i++)
+  {
+    if (songs[i]->duration >= ans && songs[i]->duration <= ans2)
+    {
+      filtered_songs[n_canciones] = songs[i];
+      n_canciones++;
+    }
+  }
+  menu2(n_canciones, filtered_songs, songs, pool);
+  free(filtered_songs);
   return 0;
 }
 
-int (*filters[])(songPool, song **) = {filter_by_artist, filter_by_album,
-                                       filter_by_genre,  filter_by_language,
-                                       filter_by_year,   filter_by_duration};
+
+
+
+//================FUNCIONES DE MENU================
+
+void menu2(int n_canciones, song **filtered_songs, song **songs, songPool pool)
+{
+  if (n_canciones == 0)
+  {
+    printf("\nNo hay canciones que mostrar\n");
+    return;
+  }
+
+    int ans;
+    printf("\n=== %d canciones encontradas ===\n"
+          "1. Ver primeras 100 canciones \n"
+          "2. Aplicar otro filtro\n"
+          "3. Exportar y salir\n"
+          "4. Salir sin exportar\n",
+          n_canciones);
+
+    scanf("%d", &ans);
+    system("clear");
+
+    switch (ans)
+    {
+    case 1:
+      printf("Se muestran las primeras 100 canciones:\n");
+      for (int i = 0; i < n_canciones && i < 100; i++)
+      {
+        printf("%3d. %s\n", i + 1, filtered_songs[i]->title);
+      }
+
+      printf("\nDesea seguir? (1: Si, 2: No): ");
+      int ans2;
+      scanf("%d", &ans2);
+      system("clear");
+      if (ans2 == 1) {
+        menu2(n_canciones, filtered_songs, songs, pool);
+      } else {
+        break;
+      }
+
+    case 2:
+      printf("Se aplica otro filtro\n");
+      menu_lista_filtrada(pool,filtered_songs, n_canciones);
+      break;
+
+    case 3:
+      printf("Se exporta y se sale\n"); // FALTA TERMINAR
+      break;
+
+    case 4:
+      printf("Se sale sin exportar\n");
+      break;
+
+    default:
+      printf("Opcion no valida\n");
+      menu2(n_canciones, filtered_songs, songs, pool);
+      break;
+    }
+}
+
 
 void menu(songPool pool, song **songs)
 {
@@ -640,8 +729,45 @@ void menu(songPool pool, song **songs)
 
   scanf("%d", &ans);
   system("clear");
+  if (ans ==7)
+  {
+    printf("Saliendo del programa...\n");
+    return;
+  }
+
   filters[ans - 1](pool, songs);
 }
+
+
+void menu_lista_filtrada(songPool pool, song **filtered_songs, int n_canciones)
+{
+  if (n_canciones == 0)
+  {
+    printf("\nNo hay canciones que mostrar\n");
+    return;
+  }
+
+  int ans;
+  printf("\n===== SISTEMA DE FILTRADO DE CANCIONES =====\n\n"
+         "Seleccione un filtro para aplicar:\n"
+         "1. Filtrar por artista\n"
+         "2. Filtrar por álbum\n"
+         "3. Filtrar por género\n"
+         "4. Filtrar por idioma\n"
+         "5. Filtrar por año de lanzamiento (rango)\n"
+         "6. Filtrar por duración (rango en segundos)\n"
+         "7. Salir sin exportar\n\n");
+  printf("Seleccione una opción: ");
+
+  scanf("%d", &ans);
+  system("clear");
+
+  filters[ans - 1](pool, filtered_songs);
+}
+
+
+
+//================MAIN================
 
 int main(int argc, char **argv)
 {
