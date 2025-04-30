@@ -791,8 +791,10 @@ void menu_lista_filtrada(songPool pool, song **filtered_songs, int n_canciones)
 int main(int argc, char **argv)
 {
   if (argc == 1)
+  {
     show_usage_error(argv[0]);
-
+    return 1;
+  }
   songPool pool;
   init_song_pool(&pool);
 
