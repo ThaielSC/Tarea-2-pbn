@@ -11,10 +11,10 @@ const int SONG_ID = 0, SONG_TITLE = 1, ARTIST = 2, ALBUM = 3, GENRE = 4,
 /* ===DECLARACION DE TIPOS=== */
 typedef char ISO[3];
 typedef char ID[8];
-typedef char bool;
+typedef char boolean;
 
-const bool True = 1;
-const bool False = 0;
+const boolean True = 1;
+const boolean False = 0;
 
 typedef struct
 {
@@ -35,7 +35,7 @@ typedef struct
   char popularity;
   int stream;
   char *language;
-  bool explicit_content;
+  boolean explicit_content;
   char *label;
   char *composer;
   char *producer;
